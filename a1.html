@@ -4,15 +4,84 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
 
-    <title>Example Student's HCDE 439 Physical Computing Page!</title>
+    <title>A1: Blink</title>
 
     <link href="style.css" rel="stylesheet" type="text/css" />
-  </head>
-  <body>
-    <h1>Example Student's Assignment 1!</h1>
-    <div class="header">
-      <img src="red-panda.jpg" />
-      <p>Here is all the documentation for assignment 1!</p>
-    </div>
-  </body>
+    <header>
+      <video width="600" controls autoplay loop muted>
+        <source src="blink_video.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      <div>
+        <h1>A1: Blink — Three LEDs</h1>
+        <p class="meta">HCDE • Arduino Uno • Red LEDs • Resistors sized for 5V logic</p>
+      </div>
+    </header>
+    <section id="firmware">
+      <h2>Firmware (Arduino Code)</h2>
+      <p>
+        This code runs on the Arduino Uno and controls three red LEDs connected in parallel
+        (each with its own resistor) to pin 13. All LEDs blink together at a 1-second interval.
+      </p>
+    
+      <pre><code>// ---------------------------------------------------------
+    
+    void setup() {
+      // Initialize digital pin 13 as an output
+      pinMode(13, OUTPUT);
+    }
+    
+    void loop() {
+      // Turn all LEDs ON
+      digitalWrite(13, HIGH);
+      delay(1000); // Wait for 1 second
+    
+      // Turn all LEDs OFF
+      digitalWrite(13, LOW);
+      delay(1000); // Wait for 1 second
+    }
+    </code></pre>
+    </section>
+    <section id="schematic">
+      <h2> Schematic: Calculations and Sketch of the Circuit</h2>
+      <img src="A1_schematic.jpg" 
+      alt="Hand or software-drawn schematic showing three LEDs with resistors connected in parallel to Arduino pin 13" />
+ <figcaption>
+   Schematic sketch of the LED circuit. Three red LEDs are wired in <b>parallel</b>, each with its own resistor 
+   (≈160&nbsp;Ω). The anodes connect to Arduino <b>pin&nbsp;13</b>, and the cathodes go to <b>GND</b>.
+   The resistors limit current to about 20&nbsp;mA per branch (total ≈60&nbsp;mA).
+ </figcaption>
+</figure>
+</section>
+
+<!-- Graph -->
+<section id="voltage-graph">
+<h2>Voltage vs. Time Graph</h2>
+<figure>
+ <img src="A1_graph.jpg" 
+      alt="Graph showing LED voltage alternating between 0 V and 1.8 V (Time vs Voltage)" />
+ <figcaption>
+   Graph of the voltage across each LED over time. All three LEDs share the same form since they blink 
+   together in parallel.
+ </figcaption>
+</figure>
+</section>
+
+<h3>2) How many LEDs could blink independently? How much current?</h3>
+<p>
+  You can blink about 10-12 LEDs at once. If every LED is on at once at 20mA each, that would amount to about 200 mA total for the system.
+</p>
+
+<h3>4) How fast until you can’t tell they’re blinking?</h3>
+<p>
+  The limit is around 60hz. If it is any higher it will be hard to tell that the LEDs are blinking.
+</p>
+
+<h3>5) AI tools usage & reflection</h3>
+<p>
+  I used AI to verify resistor/current calculations and for help in clarifying certain electrical concepts related to the circuit I was making.
+  AI also helped me in the layout for this webpage by giving me outlines for each section of the portfolio piece.
+</p>
+</section>
+
 </html>

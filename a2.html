@@ -3,16 +3,167 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
-
-    <title>Example Student's HCDE 439 Physical Computing Page!</title>
+    <title>A2: Fade</title>
 
     <link href="style.css" rel="stylesheet" type="text/css" />
   </head>
+
   <body>
-    <h1>Example Student's Assignment 2!</h1>
-    <div class="header">
-      <img src="red-panda.jpg" />
-      <p>Here is all the documentation for assignment 2!</p>
-    </div>
+    <!-- HEADER SECTION -->
+    <header>
+      <video width="600" controls autoplay loop muted>
+        <source src="fade_video.mp4" type="video/mp4" />
+        
+      </video>
+      <div>
+        <h1>A2: Fade — RGB LED Color Cycle</h1>
+        <p class="meta">HCDE • Arduino Uno • RGB LED • 160Ω resistor</p>
+      </div>
+    </header>
+
+    <!-- DOCUMENTATION INTRO -->
+    <section id="intro">
+      <h2>Overview</h2>
+      <div class="header">
+        <img src="Cover_A2.jpg" alt="Example student photo or project image" />
+        <p>
+          This assignment demonstrates a smooth RGB LED color fade using the Arduino’s PWM
+          output pins. The LED transitions gradually through red, green, and blue tones when
+          the button is pressed.
+        </p>
+      </div>
+    </section>
+
+    <!-- FIRMWARE SECTION -->
+    <section id="firmware">
+      <h2>Firmware (Arduino Code)</h2>
+      <p>
+        The following Arduino code fades an RGB LED through red, green, and blue channels.
+        The button on pin 2 enables or disables the fading sequence.
+      </p>
+
+      <pre><code>// ---------------------------------------------------------
+// A2: Fade — RGB LED PWM control with button input
+
+// Button + RGB color fade 
+const int buttonPin = 2;  // pushbutton pin 
+const int G = 10;   
+const int R = 11;
+const int B = 9;
+
+int buttonState = 0;      // tracks button
+
+void setup() {
+  pinMode(R, OUTPUT);     // RGB pins as outputs
+  pinMode(G, OUTPUT);
+  pinMode(B, OUTPUT);
+  pinMode(buttonPin, INPUT); 
+
+  // start off: all off
+  analogWrite(R, 0);
+  analogWrite(G, 0);
+  analogWrite(B, 0);
+}
+
+void loop() {
+  // read button
+  buttonState = digitalRead(buttonPin);
+
+  if (buttonState == HIGH) {
+    // Fade R up and down 
+    for (int i = 0; i <= 255; i++) { 
+     	analogWrite(R, i); 
+      	delay(5); 
+    }
+    for (int i = 255; i >= 0; i--) {
+    	analogWrite(R, i); 
+      	delay(5); 
+    }
+    
+    //  Fade G up and down 
+    for (int i = 0; i <= 255; i++) {
+    	analogWrite(G, i); 
+      	delay(5); 
+    }
+    for (int i = 255; i >= 0; i--) {
+    	analogWrite(G, i); 
+      	delay(5); 
+    }
+
+    //  Fade BLUE up and down 
+    for (int i = 0; i <= 255; i++) {
+    	analogWrite(B, i); 
+      	delay(5); 
+    }
+    for (int i = 255; i >= 0; i--) { 
+    	analogWrite(B, i); 
+      	delay(5); 
+    }
+
+  } else {
+    // button not pressed: all off
+    analogWrite(R, 0);
+    analogWrite(G, 0);
+    analogWrite(B, 0);
+  }
+}
+      </code></pre>
+    </section>
+
+    <!-- SCHEMATIC SECTION -->
+    <section id="schematic">
+      <h2>Schematic: Circuit and Calculations</h2>
+      <figure>
+        <img src="A2_schematic.jpg" alt="Schematic showing button input and RGB LED with 160Ω resistor on common cathode" />
+        <figcaption>
+          The schematic shows a common-cathode RGB LED connected to Arduino pins 9, 10, and 11.
+          The cathode connects through a 160&nbsp;Ω resistor to ground. The pushbutton connects
+          pin&nbsp;2 to ground using <code>INPUT</code>.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- GRAPH SECTION -->
+    <section id="graph">
+      <h2>Voltage vs. Time Graph</h2>
+      <figure>
+        <img src="A2_graph.jpg" alt="Graph of PWM voltage across LED vs time at different analogWrite levels" />
+        <figcaption>
+          Voltage across the LED for PWM duty cycles of 25%, 50%, and 100%. 
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- BATTERY LIFE SECTION -->
+    <section id="battery">
+      <h2>Battery Life Estimate</h2>
+      <p>
+        With an average LED current of about 7 mA and a 1200 mAh battery, the circuit
+        could theoretically run for about 170 hours (7 days)
+      </p>
+    </section>
+
+    <!-- FORWARD VOLTAGE SECTION -->
+    <section id="forward-voltage">
+      <h2>Measured vs. Theoretical Forward Voltage</h2>
+      <p>
+        Measured LED voltages:
+        <br />Red: ~2.0 V • Green: ~3.0 V • Blue: ~3.2 V
+      </p>
+      <p>
+        These closely match theoretical values. Small variations are expected due to LED color
+        differences and current.
+      </p>
+    </section>
+
+    <!-- AI REFLECTION -->
+    <section id="ai">
+      <h2>AI Tools Usage & Reflection</h2>
+      <p>
+        I used ChatGPT to help refine my resistor and current calculations, visualize the PWM
+        voltage graph, and format this webpage similar to Assignment&nbsp;1. I verified all
+        calculations in Tinkercad and through testing.
+      </p>
+    </section>
   </body>
 </html>

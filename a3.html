@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+    <title>A3: Light-Responsive LED Brightness</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body>
+    <!-- HEADER -->
+    <header>
+      <video width="600" controls autoplay loop muted>
+        <source src="a3_demo.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+      <div>
+        <h1>A3: Light-Responsive LED Brightness — LDR + Potentiometer</h1>
+        <p class="meta">
+          Arduino Uno • LDR + 10 kΩ (pot) voltage divider → A0 • PWM LED on D11
+        </p>
+      </div>
+    </header>
+
+    <!-- OVERVIEW -->
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>
+        This project uses a <b>photoresistor (LDR)</b> and a <b>250 kΩ potentiometer</b> as a
+        voltage divider to measure ambient light on <code>A0</code> and adjust the brightness of an
+        LED (or small LED array) with PWM on <code>D11</code>. A threshold prevents the LED from
+        lighting in low-light conditions.
+      </p>
+      <p>
+        The firmware uses <code>analogRead()</code>, <code>map()</code>, <code>analogWrite()</code>,
+        and an <code>if</code> statement. It prints custom messages to the Serial Monitor
+        describing sensor readings and output state.
+      </p>
+
+    </section>
+
+    <!-- SCHEMATIC -->
+    <section id="schematic">
+      <h2>Schematic & Value Justification</h2>
+      <figure>
+        <img src="a3_schematic_led.jpg" alt="Schematic: LDR + pot divider to A0, LED (or LED array) on D11 via 220Ω" />
+        <figcaption>
+          <b>Sensor:</b> LDR on the top leg to 5 V; the divider junction goes to <b>A0</b>.
+          The bottom leg is a <b>250 kΩ potentiometer</b> to GND (used as a 2-terminal rheostat:
+          wiper → junction, one outer pin → GND).<br/>
+          <b>Output:</b> <code>D11 → 220 Ω → LED → GND</code> (or three identical LED branches, each with 220 Ω).<br/>
+          <h3>Why 220&nbsp;Ω? (Reverse Calculation from 20&nbsp;mA)</h3>
+          <p>
+            I began with a target LED current of <b>20&nbsp;mA</b> (bright but within typical LED limits).
+            Using Ohm’s law with a 5&nbsp;V Arduino output and a red LED forward voltage of ~2.0&nbsp;V:
+          </p>
+        
+          <pre><code>Goal current: I = 20 mA = 0.020 A
+        Supply:      V<sub>supply</sub> = 5.0 V
+        LED drop:    V<sub>f</sub> ≈ 2.0 V
+        
+        Ohm’s law for the series resistor:
+        R = (V<sub>supply</sub> − V<sub>f</sub>) / I
+        R = (5.0 − 2.0) / 0.020 = 150 Ω
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- CIRCUIT -->
+    <section id="circuit">
+      <h2>Physical Circuit</h2>
+      <figure>
+        <img src="a3_circuit_led.jpg" alt="Breadboard layout with LDR divider to A0 and LED on D11" />
+        <figcaption>
+          Breadboard view: 5 V→LDR→(junction)→A0; junction→pot wiper; pot outer pin→GND.
+          D11→220 Ω→LED→GND. 
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- FIRMWARE -->
+    <section id="firmware">
+      <h2>Arduino Code (Line-by-Line Comments)</h2>
+      
+
+      <pre><code>   //const int sensorPin = A0;     // Photoresistor input 
+        const int outputPin = 11;      // PWM output 
+        int sensorValue = 0;          // Stores analog reading (0–1023)
+        int outputValue = 0;          // Stores PWM value (0–255)
+        
+        void setup() {
+          Serial.begin(9600);         // Start Serial Monitor
+          pinMode(outputPin, OUTPUT);
+        }
+        
+        void loop() {
+          // Read analog sensor value
+          sensorValue = analogRead(sensorPin);
+        
+          // Map the 0–1023 range, 0–255 for PWM output
+          outputValue = map(sensorValue, 0, 1023, 0, 255);
+        
+          // turn off output in low light
+          if (sensorValue < 200) {
+            analogWrite(outputPin, 0);  // Too dark, turn off output
+            Serial.print("Low light (");
+            Serial.print(sensorValue);
+            Serial.println(") → Output OFF");
+          } 
+          else {
+            analogWrite(outputPin, outputValue);
+            Serial.print("Light level: ");
+            Serial.print(sensorValue);
+            Serial.print(" → Output PWM: ");
+            Serial.println(outputValue);
+          }
+          
+        }
+      </code></pre>
+    </section>
+
+    <!-- OPERATION -->
+    <section id="operation">
+      <h2>Operation & Serial Output</h2>
+      <figure>
+        <img src="a3_demo.gif" alt="Animated GIF of LED brightness responding to light and knob" />
+        <figcaption>
+          LED (or LED array) brightens with increasing light and dims with decreasing light.
+          The potentiometer trims sensitivity by changing the divider’s bottom leg resistance.
+        </figcaption>
+      </figure>
+
+      <h3>Example Serial Monitor Output</h3>
+      <pre><code>Light level: 845 → Output PWM: 211
+Light level: 903 → Output PWM: 224
+Low light (152) → Output OFF
+      </code></pre>
+    </section>
+
+    <!-- CALCULATIONS -->
+    <!-- <section id="calculations">
+      <h2>Voltage Divider Calculations</h2>
+      <p>
+        Assume LDR ≈ 2 kΩ (bright) to 50 kΩ (dark), and pot set near 10 kΩ for the lower leg.
+      </p>
+      <ul>
+        <li>
+          Bright: V<sub>A0</sub> = 5 × 10k / (2k + 10k) ≈ 4.17 V → analogRead ≈ 850
+        </li>
+        <li>
+          Dim: V<sub>A0</sub> = 5 × 10k / (50k + 10k) ≈ 0.83 V → analogRead ≈ 170
+        </li>
+      </ul>
+      <p>
+        The cutoff of 200 corresponds to ~1.0 V. Adjust by turning the potentiometer to shift the
+        effective bottom resistance and, therefore, the sensitivity.
+      </p>
+    </section> -->
+
+    <section id="questions">
+        <h2>Additional Questions</h2>
+      
+        <h3>1) Can the variable resistor be either R₁ or R₂?</h3>
+        <p>
+          Yes. The variable resistor can be either R₁ or R₂ in a voltage divider.
+          If it’s on the top (R₁), the output voltage decreases as resistance increases.
+          If it’s on the bottom (R₂), the output voltage increases as resistance increases.
+          The math is the same, only the direction of the voltage change is reversed.
+        </p>
+      
+        <h3>2) Voltage vs. Time Graph</h3>
+        <figure>
+          <img src="a3_graph.jpg" alt="Voltage vs Time graph for LDR output" />
+          <figcaption>
+            The graph shows how voltage at A0 changes over time as light levels change.
+            Brighter light causes higher voltage readings; darker conditions cause lower voltages.
+          </figcaption>
+        </figure>
+      
+        <h3>3) What if analogRead was 16-bit and analogWrite was 10-bit?</h3>
+        <p>
+          The <code>map()</code> function would need to match those new bit ranges.
+          Instead of <code>map(sensorValue, 0, 1023, 0, 255)</code>,
+          you would write <code>map(sensorValue, 0, 65535, 0, 1023)</code>.
+          This would give finer control because both input and output have more resolution.
+        </p>
+      </section>
+  </body>
+</html>

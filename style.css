@@ -71,3 +71,35 @@ h2 {
 .assignment p {
   margin-top: 0.5em;
 }
+header.split {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 0;
+}
+
+/* make portrait video a fixed height; keep aspect ratio */
+header.split .portrait {
+  height: clamp(320px, 60vh, 640px);
+  width: auto;
+  object-fit: contain;   /* no cropping for vertical video */
+  border-radius: 8px;
+}
+
+/* let text take remaining space */
+header.split .content {
+  flex: 1 1 0;
+  min-width: 260px;
+}
+
+/* responsive: stack on small screens */
+@media (max-width: 800px) {
+  header.split { 
+    flex-direction: column; 
+    align-items: flex-start;
+  }
+  header.split .portrait {
+    width: 100%;
+    height: auto;
+  }
+}

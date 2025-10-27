@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+    <title>A2: Hand Distance with Ultrasonic</title>
+
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body>
+    <!-- HEADER SECTION -->
+    <header>
+      <video width="600" controls autoplay loop muted>
+        <source src="a4_video.mp4" type="video/mp4" />
+      </video>
+      <div>
+        <h1>A2: Hand Distance — Ultrasonic + RGB LED</h1>
+        <p class="meta">HCDE • Arduino Uno • HC-SR04 • RGB LED • 220 Ω resistors • NewPing</p>
+      </div>
+    </header>
+
+    <!-- DOCUMENTATION INTRO -->
+    <section id="intro">
+      <h2>Overview</h2>
+      <div class="header">
+        <img src="a4_circuit_ss.jpg" alt="Project photo showing hand over HC-SR04 and RGB LED" />
+        <p>
+          This assignment measures how far a <strong>hand</strong> is from an
+          <strong>HC-SR04 ultrasonic sensor</strong> and maps that distance to distinct colors on a
+          <strong>common-cathode RGB LED</strong>. The sketch prints the measured distance to the
+          Serial Monitor and displays proximity bands (e.g., red when close, blue when far).
+        </p>
+      </div>
+    </section>
+
+    <!-- FIRMWARE SECTION -->
+    <section id="firmware">
+      <h2>Firmware (Arduino Code)</h2>
+      <p>
+        The firmware uses <code>NewPing.h</code> to simplify echo timing and distance
+        conversion. Distances are shown in inches and divided into six evenly spaced color
+        bands from 0–120&nbsp;in. 
+      </p>
+
+      <pre><code>// ---------------------------------------------------------
+// A2: Hand Distance — HC-SR04 + RGB LED (NewPing)
+// Wiring:
+//   HC-SR04: VCC->5V, GND->GND, TRIG->D9, ECHO->D8
+//   RGB LED (common-cathode): R->D3, G->D5, B->D6 (each with 220Ω), cathode->GND
+
+#include NewPing.h
+
+    // --- Ultrasonic setup ---
+    #define TRIG_PIN  9
+    #define ECHO_PIN  8
+    #define MAX_DIST  100  
+    NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DIST);
+    
+    // --- RGB LED pins ---
+    const int R_PIN = 3;
+    const int G_PIN = 5;
+    const int B_PIN = 6;
+    
+    void setup() {
+      Serial.begin(9600);
+      pinMode(R_PIN, OUTPUT);
+      pinMode(G_PIN, OUTPUT);
+      pinMode(B_PIN, OUTPUT);
+    }
+    
+    void loop() {
+      delay(100); // small delay between pings
+    
+      int distanceIN = sonar.ping_in();      // measure distance in inches
+    
+      if (distanceIN == 0) {  // out of range
+        setColor(0, 0, 0);    // LED off
+        return;
+      }
+    
+      // --- Screen-distance ---
+      if (distanceIN < 4) {        // Too close
+        setColor(255, 0, 0);        // Red
+      } else if (distanceIN <= 8) { // Ideal range
+        setColor(0, 255, 0);        // Blue
+      } else {                      // Too far
+        setColor(0, 0, 255);        // Green
+      }
+    
+      // Serial Monitor Reading
+      Serial.print("Distance: ");
+      Serial.print(distanceIN);
+      Serial.println(" in");
+    }
+    
+    // --- RGB helper function ---
+    void setColor(int r, int g, int b) {
+      analogWrite(R_PIN, r);
+      analogWrite(G_PIN, g);
+      analogWrite(B_PIN, b);
+    }
+      </code></pre>
+    </section>
+
+    <!-- SCHEMATIC SECTION -->
+    <section id="schematic">
+      <h2>Schematic: Circuit and Calculations</h2>
+      <figure>
+        <img src="A2_hand_schematic.jpg" alt="Schematic showing HC-SR04 to pins 8/9 and RGB LED to pins 3/5/6 with 220Ω resistors" />
+        <figcaption>
+          The HC-SR04’s TRIG and ECHO connect to D9 and D8. Each LED channel (R/G/B) connects to
+          a PWM pin (D3/D5/D6) through a 220&nbsp;Ω resistor to limit current. All grounds are
+          common. Distance in cm is obtained via <code>NewPing.ping_cm()</code> and converted to
+          inches with <code>cm / 2.54</code>.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- GRAPH SECTION -->
+    <section id="graph">
+      <h2>Voltage vs. Time Graph</h2>
+      <figure>
+        <img src="A2_echo_graph.jpg" alt="Sketch of ultrasonic echo timing vs time for two distances" />
+        <figcaption>
+          The ultrasonic module emits a short trigger pulse; the ECHO line goes HIGH for a duration
+          proportional to distance. NewPing abstracts this timing and returns distance directly.
+          The RGB LED uses PWM (0–255 duty) on pins 3/5/6 to set color per distance band.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- BATTERY LIFE SECTION -->
+    <section id="battery">
+      <h2>Battery Life Estimate</h2>
+      <p>
+        Assuming an average LED draw of ~15&nbsp;mA (one channel on at a time) plus the sensor
+        and microcontroller overhead of ~35&nbsp;mA, total is ~50&nbsp;mA. With a 1200&nbsp;mAh
+        pack, runtime ≈ <em>1200 / 50 ≈ 24&nbsp;hours</em> (theoretical; regulator losses not included).
+      </p>
+    </section>
+
+    <!-- FORWARD VOLTAGE SECTION -->
+    <section id="forward-voltage">
+      <h2>Measured vs. Theoretical Forward Voltage</h2>
+      <p>
+        Typical LED forward voltages: Red ≈ 2.0&nbsp;V, Green ≈ 3.0&nbsp;V, Blue ≈ 3.2&nbsp;V.
+        Using individual 220&nbsp;Ω resistors per channel at 5&nbsp;V limits current to a safe level
+        and keeps brightness reasonably balanced.
+      </p>
+    </section>
+
+    <!-- AI REFLECTION -->
+    <section id="ai">
+      <h2>AI Tools Usage & Reflection</h2>
+      <p>
+        I used ChatGPT to structure the documentation in this A2 format, choose clean distance
+        bands (0–120 in), and simplify the firmware using NewPing so I didn’t need to manage raw
+        echo pulse timing. I verified wiring and thresholds on the bench and used the Serial
+        Monitor for quick distance checks.
+      </p>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,130 @@
+<!-- FINAL PROJECT SECTION -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+    <title>A2: Hand Distance with Ultrasonic</title>
+
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+
+
+<section id="project">
+    <h1>Health Aid Proximity-Sensing Webcam</h1>
+    <img 
+    src="proxi_cam.jpg" 
+    alt="Project photo showing the model of the proximity sensing webcam" 
+    width="50%" />
+    <!-- CONCEPT -->
+    <h2>Project Concept & Motivation</h2>
+    <p>
+      I aim to complete the development of a <b>proximity-sensing webcam</b> that notifies users when
+      they are too close to their laptop or monitor screen.<br> Based on real-time interaction between
+      the product’s hardware and firmware, users receive a <b>visual indicator</b> signifying their
+      distance from the screen.<br> The output appears as a <b>color-coded overlay</b> using
+      <b>BetterTouchTool (BTT)</b> on macOS.
+    </p>
+  
+    <!-- MATERIALS -->
+    <h2>Bill of Materials</h2>
+    <ul>
+      <li>3D-printed shell for webcam housing</li>
+      <li>Adafruit VL53L1X Time-of-Flight Distance Sensor</li>
+      <li>Adafruit QT Py – SAMD21 Dev Board with STEMMA QT</li>
+      <li>STEMMA QT / Qwiic JST SH 4-Pin Cable (50&nbsp;mm)</li>
+      <li>USB-C data cable</li>
+    </ul>
+  
+    <!-- TIMELINE -->
+    <h2>Timeline & Contingency Plans</h2>
+  
+    <h3>Week 7 (Current): Hardware Assembly & Initial Firmware</h3>
+    <p><b>Goals</b></p>
+    <ul>
+      <li>Wire the QT&nbsp;Py ↔ VL53L1X using a STEMMA&nbsp;QT cable.</li>
+      <li>Upload and verify the distance-reporting Arduino sketch (<code>CLOSE / MEDIUM / FAR</code> output).</li>
+      <li>Begin tuning thresholds for real screen-use distances (≈18–30&nbsp;inches).</li>
+      <li>Confirm stable serial output via the Arduino&nbsp;IDE Serial Monitor.</li>
+    </ul>
+    <p><b>Deliverables</b></p>
+    <ul>
+      <li>Working breadboard prototype</li>
+      <li>Calibrated firmware for the setup</li>
+      <li>Serial output that matches user proximity</li>
+    </ul>
+    <p><b>Contingency</b></p>
+    <ul>
+      <li>If readings fluctuate, add median or exponential-moving-average smoothing.</li>
+      <li>If the sensor misreads near glossy screens, slightly tilt the sensor downward.</li>
+    </ul>
+  
+    <h3>Week 8: BTT Integration & Bridge Script</h3>
+    <p><b>Goals</b></p>
+    <ul>
+      <li>Write and test the Python → BTT webhook bridge (<code>btt_bridge.py</code>).</li>
+      <li>Enable the BTT Web Server and create named triggers (<code>CLOSE</code>, <code>MEDIUM</code>, <code>FAR</code>).</li>
+      <li>Design and test visual overlays or tint indicators in BTT.</li>
+      <li>Verify real-time response between proximity changes and BTT overlays.</li>
+    </ul>
+    <p><b>Deliverables</b></p>
+    <ul>
+      <li>Running bridge script with printed console logs</li>
+      <li>Functional BTT overlays triggered by distance zones</li>
+    </ul>
+    <p><b>Contingency</b></p>
+    <ul>
+      <li>If BTT triggers lag, reduce <code>delay()</code> in firmware or Python loop.</li>
+      <li>If the serial port changes on reconnect, add auto-detection to the script.</li>
+    </ul>
+  
+    <h3>Week 9: Enclosure Design & System Refinement</h3>
+    <p><b>Goals</b></p>
+    <ul>
+      <li>3D-model a compact shell that mounts above a laptop or external monitor.</li>
+      <li>Print and fit-test the enclosure; adjust the aperture for the VL53L1X sensor.</li>
+      <li>Optimize the sensor’s downward angle (~10–15°).</li>
+      <li>Conduct informal user testing with classmates to assess comfort and clarity.</li>
+    </ul>
+    <p><b>Deliverables</b></p>
+    <ul>
+      <li>Fully enclosed working prototype</li>
+      <li>User feedback and final threshold adjustments</li>
+    </ul>
+    <p><b>Contingency</b></p>
+    <ul>
+      <li>If the print fit is off, re-measure and re-print smaller components.</li>
+      <li>If reflection interferes, coat the interior matte black or add a thin foam baffle.</li>
+    </ul>
+  
+    <h3>Week 10 → Finals Week: Documentation & Presentation</h3>
+    <p><b>Goals</b></p>
+    <ul>
+      <li>Create a complete HTML documentation page (schematic, firmware, photos, etc.).</li>
+      <li>Record a short demo video showing overlays responding to proximity zones.</li>
+      <li>Prepare a concise presentation deck summarizing concept, motivation, and system workflow.</li>
+    </ul>
+    <p><b>Deliverables</b></p>
+    <ul>
+      <li>Final webpage and demo video</li>
+      <li>Presentation ready for showcase</li>
+    </ul>
+    <p><b>Contingency</b></p>
+    <ul>
+      <li>If hardware issues occur on demo day, use a pre-recorded demo video.</li>
+      <li>Keep both <code>.ino</code> and Python files versioned in GitHub for redundancy.</li>
+    </ul>
+  
+    <!-- ILLUSTRATION -->
+    <h2>Illustration Sketch of the Final System</h2>
+    <p>
+      See the original project post for sketches and early models of the system design.<br>
+      The refined version will include a slightly larger shell to allow the hardware
+      components to fit comfortably within the enclosure.
+    </p>
+    <p>
+      <a href="https://medium.com/@theotza/proximity-sensing-webcam-987c7eb86037" target="_blank">
+        View the original project on Medium →
+      </a>
+    </p>
+  </section>

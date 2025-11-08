@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
-    <title>A2: Hand Distance with Ultrasonic</title>
+    <title>A4: Hand Distance with Ultrasonic</title>
 
     <link href="style.css" rel="stylesheet" type="text/css" />
   </head>
@@ -12,11 +12,11 @@
     <!-- HEADER SECTION -->
     <header>
       <video width="600" controls autoplay loop muted>
-        <source src="a4_video.mp4" type="video/mp4" />
+        <source src="a4_demo_video.mp4" type="video/mp4" />
       </video>
       <div>
-        <h1>A2: Hand Distance — Ultrasonic + RGB LED</h1>
-        <p class="meta">HCDE • Arduino Uno • HC-SR04 • RGB LED • 220 Ω resistors • NewPing</p>
+        <h1>A4: Hand Distance — Ultrasonic + RGB LED + Servo</h1>
+        <p class="meta">HCDE • Arduino Uno • HC-SR04 • RGB LED • 220 Ω resistors • NewPing • Servo • Servo.h </p>
       </div>
     </header>
 
@@ -24,12 +24,13 @@
     <section id="intro">
       <h2>Overview</h2>
       <div class="header">
-        <img src="a4_circuit_ss.jpg" alt="Project photo showing hand over HC-SR04 and RGB LED" />
+        <img src="a4_ss.jpg" alt="Project photo showing hand over HC-SR04 and RGB LED" />
         <p>
           This assignment measures how far a <strong>hand</strong> is from an
-          <strong>HC-SR04 ultrasonic sensor</strong> and maps that distance to distinct colors on a
-          <strong>common-cathode RGB LED</strong>. The sketch prints the measured distance to the
-          Serial Monitor and displays proximity bands (e.g., red when close, blue when far).
+          <strong>HC-SR04 ultrasonic sensor</strong> and a maps that distance to distinct colors on a
+          <strong>common-cathode RGB LED</strong> as well as physical displacements on a Servo Motor. <br>
+          The sketch outputs the measured distance to the Serial Monitor and visualizes proximity levels <br>
+          through color indicators and corresponding servo angles (e.g., red at 90°, blue at 0°).<br>
         </p>
       </div>
     </section>
@@ -38,68 +39,81 @@
     <section id="firmware">
       <h2>Firmware (Arduino Code)</h2>
       <p>
-        The firmware uses <code>NewPing.h</code> to simplify echo timing and distance
-        conversion. Distances are shown in inches and divided into six evenly spaced color
-        bands from 0–120&nbsp;in. 
+        The firmware uses <code>NewPing.h</code> to handle echo timing and distance conversion, and <code>Servo.h</code> to position the servo according to detected distance.
+        <br>Distances are shown in inches and divided into six evenly spaced color
+        bands from 0–20&nbsp;in. 
       </p>
 
       <pre><code>// ---------------------------------------------------------
-// A2: Hand Distance — HC-SR04 + RGB LED (NewPing)
+// A4: Hand Distance — HC-SR04 + RGB LED (NewPing) + Sero (Servo.h)
 // Wiring:
-//   HC-SR04: VCC->5V, GND->GND, TRIG->D9, ECHO->D8
+//   HC-SR04: VCC->5V, GND->GND, TRIG->D7, ECHO->D8 SERVO_PIN->D9
 //   RGB LED (common-cathode): R->D3, G->D5, B->D6 (each with 220Ω), cathode->GND
 
+#include Servo.h
 #include NewPing.h
-
-    // --- Ultrasonic setup ---
-    #define TRIG_PIN  9
-    #define ECHO_PIN  8
-    #define MAX_DIST  100  
-    NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DIST);
-    
-    // --- RGB LED pins ---
-    const int R_PIN = 3;
-    const int G_PIN = 5;
-    const int B_PIN = 6;
-    
-    void setup() {
-      Serial.begin(9600);
-      pinMode(R_PIN, OUTPUT);
-      pinMode(G_PIN, OUTPUT);
-      pinMode(B_PIN, OUTPUT);
+  
+  // Pin setup
+  #define TRIG_PIN 7
+  #define ECHO_PIN 8
+  #define SERVO_PIN 9
+  #define LED_R 3
+  #define LED_G 5
+  #define LED_B 6
+  
+  // Ultrasonic settings 
+  #define MAX_DISTANCE 100 // inches
+  NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
+  
+  // Objects
+  Servo myServo;
+  
+  // Distance thresholds (inches)
+  const int FAR_THRESH = 20;
+  const int MID_THRESH = 10;
+  const int CLOSE_THRESH = 5;
+  
+  void setup() {
+    myServo.attach(SERVO_PIN);
+    pinMode(LED_R, OUTPUT);
+    pinMode(LED_G, OUTPUT);
+    pinMode(LED_B, OUTPUT);
+  }
+  
+  void loop() {
+    float distance = sonar.ping_in(); // distance in inches
+  
+    // Safety check for out of range readings
+    if (distance == 0 || distance > FAR_THRESH) {
+      distance = FAR_THRESH;
     }
-    
-    void loop() {
-      delay(100); // small delay between pings
-    
-      int distanceIN = sonar.ping_in();      // measure distance in inches
-    
-      if (distanceIN == 0) {  // out of range
-        setColor(0, 0, 0);    // LED off
-        return;
-      }
-    
-      // --- Screen-distance ---
-      if (distanceIN < 4) {        // Too close
-        setColor(255, 0, 0);        // Red
-      } else if (distanceIN <= 8) { // Ideal range
-        setColor(0, 255, 0);        // Blue
-      } else {                      // Too far
-        setColor(0, 0, 255);        // Green
-      }
-    
-      // Serial Monitor Reading
-      Serial.print("Distance: ");
-      Serial.print(distanceIN);
-      Serial.println(" in");
+  
+    // === Distance logic ===
+    if (distance > MID_THRESH) {
+      // Far (safe distance)
+      setLED(0, 255, 0);  // Green
+      myServo.write(0);
+    } 
+    else if (distance > CLOSE_THRESH) {
+      // Medium distance
+      setLED(0 ,0 , 255); // Blue
+      myServo.write(45);
+    } 
+    else {
+      // Close range
+      setLED(255, 0, 0);   // Red
+      myServo.write(90);
     }
-    
-    // --- RGB helper function ---
-    void setColor(int r, int g, int b) {
-      analogWrite(R_PIN, r);
-      analogWrite(G_PIN, g);
-      analogWrite(B_PIN, b);
-    }
+  
+    delay(100); // Small delay for stability
+  }
+  
+  // RGB LED helper
+  void setLED(byte r, byte g, byte b) {
+    analogWrite(LED_R, r);
+    analogWrite(LED_G, g);
+    analogWrite(LED_B, b);
+  }
       </code></pre>
     </section>
 
@@ -107,12 +121,13 @@
     <section id="schematic">
       <h2>Schematic: Circuit and Calculations</h2>
       <figure>
-        <img src="a4_schematic.jpg" alt="Schematic showing HC-SR04 to pins 8/9 and RGB LED to pins 3/5/6 with 220Ω resistors" />
+        <img src="a4_schem.jpg" alt="Schematic showing HC-SR04 to pins 7/8 and RGB LED to pins 3/5/6 with 220Ω resistors" />
         <figcaption>
-          The HC-SR04’s TRIG and ECHO connect to D9 and D8. Each LED channel (R/G/B) connects to
-          a PWM pin (D3/D5/D6) through a 220&nbsp;Ω resistor to limit current. All grounds are
-          common. Distance in cm is obtained via <code>NewPing.ping_cm()</code> and converted to
-          inches with <code>cm / 2.54</code>.
+          The HC-SR04’s TRIG and ECHO pins connect to D7 and D8, respectively.<br><br>
+          Each LED channel (R/G/B) connects to a PWM pin (D3/D5/D6) through a 220&nbsp;Ω resistor to limit current, and all grounds are shared across components.<br><br>
+          The servo motor connects to a PWM-capable pin and receives control signals from the microcontroller via the <code>Servo.h</code> library.<br>
+          It physically represents distance by rotating to different angles corresponding to proximity zones—such as 0° for far objects, 45° for midrange, and 90° for close objects.<br><br>
+          Distance in centimeters is obtained using <code>NewPing.ping_cm()</code> and converted to inches with <code>cm / 2.54</code>.
         </figcaption>
       </figure>
     </section>
@@ -130,32 +145,51 @@
       </figure>
     </section>
 
-    <!-- BATTERY LIFE SECTION -->
-    <section id="battery">
-      <h2>Battery Life Estimate</h2>
-      <p>
-        Assuming an average LED draw of ~15&nbsp;mA (one channel on at a time) plus the sensor
-        and microcontroller overhead of ~35&nbsp;mA, total is ~50&nbsp;mA. With a 1200&nbsp;mAh
-        pack, runtime ≈ <em>1200 / 50 ≈ 24&nbsp;hours</em> (theoretical; regulator losses not included).
-      </p>
-    </section>
+<!-- ERRONEOUS READINGS SECTION -->
+<section id="erroneous-readings">
+  <h2>2️⃣ Handling 1% Erroneous Readings</h2>
+  <p>
+    If the sensor gives a bad reading about 1% of the time, take multiple samples and use the most reliable one.
+  </p>
 
-    <!-- FORWARD VOLTAGE SECTION -->
-    <section id="forward-voltage">
-      <h2>Measured vs. Theoretical Forward Voltage</h2>
-      <p>
-        Typical LED forward voltages: Red ≈ 2.0&nbsp;V, Green ≈ 3.0&nbsp;V, Blue ≈ 3.2&nbsp;V.
-        Using individual 220&nbsp;Ω resistors per channel at 5&nbsp;V limits current to a safe level
-        and keeps brightness reasonably balanced.
-      </p>
-    </section>
+  <pre><code>
+r1 = getSensorValue();
+r2 = getSensorValue();
+r3 = getSensorValue();
+reading = median(r1, r2, r3); // use middle value
+  </code></pre>
+</section>
+
+<!-- NOISY READINGS SECTION -->
+<section id="noisy-readings">
+  <h2>3️⃣ Handling ±10% Noisy Readings</h2>
+  <p>
+    If measurements fluctuate by ±10%, average several readings to smooth the noise.
+  </p>
+
+  <pre><code>
+const int N = 5;
+sum = 0;
+for (i = 0; i &lt; N; i++) {
+  sum += getSensorValue();
+}
+reading = sum / N;
+  </code></pre>
+
+  <p>Or use exponential smoothing for continuous updates:</p>
+
+  <pre><code>
+alpha = 0.2;
+reading = alpha * newValue + (1 - alpha) * oldReading;
+  </code></pre>
+</section>
 
     <!-- AI REFLECTION -->
     <section id="ai">
       <h2>AI Tools Usage & Reflection</h2>
       <p>
-        I used ChatGPT to structure the documentation in this A2 format, choose clean distance
-        bands (0–120 in), and simplify the firmware using NewPing so I didn’t need to manage raw
+        I used ChatGPT to structure the documentation in assignment 2 and 3 format, choose clean distance
+        bands (0–20 in), and simplify the firmware using NewPing so I didn’t need to manage raw
         echo pulse timing. I verified wiring and thresholds on the bench and used the Serial
         Monitor for quick distance checks.
       </p>

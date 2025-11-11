@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+    <title>A5: Ultrasonic-Controlled LED Strip</title>
+
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body>
+    <!-- HEADER SECTION -->
+    <header>
+      <video width="600" controls autoplay loop muted>
+        <source src="a5_vid.mp4" type="video/mp4" />
+      </video>
+      <div>
+        <h1>A5: Ultrasonic-Controlled LED Strip — N-MOSFET + External Power</h1>
+        <p class="meta">
+          HCDE • Arduino Uno • HC-SR04 • N-MOSFET (RFP30N06LE) • 12 V LED Strip • 220 Ω / 10 kΩ resistors • NewPing Library
+        </p>
+      </div>
+    </header>
+
+    <!-- OVERVIEW SECTION -->
+    <section id="intro">
+      <h2>Overview</h2>
+      <div class="header">
+        <img src="a5_circuit_ss.jpg" alt="Project photo showing LED strip controlled by ultrasonic sensor via MOSFET" />
+        <p>
+          This circuit uses an <strong>HC-SR04 ultrasonic distance sensor</strong> to measure hand
+          distance and control the brightness of a <strong>12 V LED strip</strong>. A
+          <strong>logic-level N-MOSFET (RFP30N06LE)</strong> acts as a low-side switch that isolates
+          the high-current LED strip from the Arduino’s 5 V logic.
+          <br /><br />
+          The <strong>NewPing</strong> library handles distance measurements, which are mapped to
+          PWM brightness levels using <code>analogWrite()</code>. Moving a hand closer increases LED
+          brightness, while moving away dims it. The design demonstrates control of higher-power
+          loads using a transistor and an external power supply.
+        </p>
+      </div>
+    </section>
+
+    <!-- FIRMWARE SECTION -->
+    <section id="firmware">
+      <h2>Firmware (Arduino Code)</h2>
+      <p>
+        The firmware reads the ultrasonic sensor with <code>NewPing.h</code> and uses the measured
+        distance to set a PWM output that drives the MOSFET gate, controlling LED brightness.
+      </p>
+
+      <pre><code>// ---------------------------------------------------------
+        // NewPing library for the HC-SR04 sensor
+        #include NewPing.h
+        
+        // ultrasonic pins
+        const int TRIG_PIN = 7;   // Trigger pin
+        const int ECHO_PIN = 8;   // Echo pin
+        // Define maximum measurable distance (cm)
+        const unsigned int MAX_DISTANCE = 200;
+        
+        NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
+        
+        // MOSFET gate pin (PWM output to LED strip)
+        const int MOSFET_GATE_PIN = 5;
+        
+        // Define distance range for brightness mapping (cm)
+        const int NEAR_CM = 5;    // Hand close → full brightness
+        const int FAR_CM  = 100;  // Hand far → dim/off
+        
+        void setup() {
+          // Set MOSFET pin as output
+          pinMode(MOSFET_GATE_PIN, OUTPUT);
+          // Start with LEDs off
+          analogWrite(MOSFET_GATE_PIN, 0);
+        }
+        
+        void loop() {
+          // Measure distance in cm from the ultrasonic sensor
+          unsigned int dist = sonar.ping_cm();
+        
+          // If no reading (0), assume object is far away
+          if (dist == 0) dist = FAR_CM + 20;
+        
+          // Constrain readings within the usable range
+          dist = constrain(dist, NEAR_CM, FAR_CM);
+        
+          // Map distance to LED brightness (close = bright)
+          int pwm = map(dist, NEAR_CM, FAR_CM, 255, 0);
+        
+          // Output PWM signal to MOSFET gate
+          analogWrite(MOSFET_GATE_PIN, pwm);
+        
+          // Short delay for stable readings
+          delay(100);
+        }
+      </code></pre>
+    </section>
+
+    <!-- SCHEMATIC SECTION -->
+    <section id="schematic">
+      <h2>Schematic and Connections</h2>
+      <figure>
+        <img src="a5_schem.jpg" alt="Schematic showing HC-SR04, MOSFET, 12V LED strip, and shared ground connections" />
+        <figcaption>
+          The <strong>HC-SR04</strong> connects to pins D7 (TRIG) and D8 (ECHO).<br /><br />
+          The <strong>LED strip</strong> runs from an external 12 V supply. Its positive terminal connects directly to +12 V,
+          and its negative terminal connects to the MOSFET’s <strong>Drain</strong> pin.<br /><br />
+          The <strong>MOSFET Source</strong> connects to GND, shared with the Arduino and the 12 V supply.
+          The <strong>Gate</strong> connects to D9 through a 220 Ω resistor, with a 10 kΩ pull-down to ground to keep
+          the LED off at startup.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- CALCULATIONS SECTION -->
+    <section id="calculations">
+      <h2>Calculations and Expected Currents</h2>
+      <p>
+        For a 5 m, 16 W LED strip powered at 12 V:
+      </p>
+      <pre><code>
+I = P / V = 16 W / 12 V = 1.33 A
+P_MOSFET = I² × R_DS(on) = 1.33² × 0.047 Ω ≈ 0.083 W
+      </code></pre>
+      <p>
+        The <strong>RFP30N06LE</strong> is rated for up to <strong>30 A continuous</strong>, far higher than the 1.33 A
+        required by the LED strip. The conduction loss is only about 0.08 W, meaning the transistor
+        stays cool. <br /><br />
+        The <strong>220 Ω resistor</strong> limits gate current spikes to around 23 mA
+        (5 V ÷ 220 Ω), while the <strong>10 kΩ resistor</strong> keeps the gate LOW at reset,
+        drawing only 0.5 mA when the pin is HIGH. <br /><br />
+        The gate voltage swings between 0 V and 5 V, producing a full V<sub>GS</sub> of 5 V for
+        reliable switching. A 12 V / 2 A power supply provides safe overhead.
+      </p>
+    </section>
+
+    <!-- GRAPH SECTION -->
+    <section id="graph">
+      <h2>Voltage vs. Time (PWM Brightness Control)</h2>
+      <figure>
+        <img src="a5_graph.jpg" alt="Graph showing PWM duty cycle controlling LED brightness" />
+        <figcaption>
+          The Arduino outputs a PWM signal (0–255 duty) on pin D5. As the duty cycle increases,
+          the MOSFET conducts longer per cycle, increasing average current through the LED strip
+          and raising brightness. Duty cycle is mapped directly to the ultrasonic distance.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- AI REFLECTION SECTION -->
+    <section id="ai">
+      <h2>AI Tools Usage & Reflection</h2>
+      <p>
+        I used ChatGPT to simplify the circuit and write annotated code using <code>NewPing.h</code>
+        instead of manual pulse timing. It helped calculate current and power for the MOSFET and LED
+        strip, ensure the transistor’s ratings were sufficient, and organize this documentation in
+        the same format as prior assignments.
+      </p>
+    </section>
+  </body>
+</html>

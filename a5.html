@@ -135,28 +135,87 @@ P_MOSFET = I² × R_DS(on) = 1.33² × 0.047 Ω ≈ 0.083 W
       </p>
     </section>
 
-    <!-- GRAPH SECTION -->
-    <section id="graph">
-      <h2>Voltage vs. Time (PWM Brightness Control)</h2>
-      <figure>
-        <img src="a5_graph.jpg" alt="Graph showing PWM duty cycle controlling LED brightness" />
-        <figcaption>
-          The Arduino outputs a PWM signal (0–255 duty) on pin D5. As the duty cycle increases,
-          the MOSFET conducts longer per cycle, increasing average current through the LED strip
-          and raising brightness. Duty cycle is mapped directly to the ultrasonic distance.
-        </figcaption>
-      </figure>
-    </section>
+<!-- QUESTIONS & EXPLANATIONS SECTION -->
+<section id="questions">
+  <h2>Questions & Explanations</h2>
 
-    <!-- AI REFLECTION SECTION -->
-    <section id="ai">
-      <h2>AI Tools Usage & Reflection</h2>
-      <p>
-        I used ChatGPT to simplify the circuit and write annotated code using <code>NewPing.h</code>
-        instead of manual pulse timing. It helped calculate current and power for the MOSFET and LED
-        strip, ensure the transistor’s ratings were sufficient, and organize this documentation in
-        the same format as prior assignments.
-      </p>
-    </section>
+  <h3>1️⃣ N-MOSFET Datasheet: Maximum Current</h3>
+  <p>
+    According to the DMT6009LCT datasheet,
+    the absolute maximum continuous drain current between pins 2 and 3 is
+    <strong>37.2 A</strong> at 25 °C and <strong>29.8 A</strong> at 100 °C.  
+    The pulsed drain current is rated up to <strong>80 A</strong>.  
+  </p>
+
+  <h3>2️⃣ Arduino + DC Motor + Flyback Diode + Capacitors</h3>
+
+  <figure>
+    <img src="a5_motor_schem.jpg" alt="Schematic showing Arduino driving a DC motor through a MOSFET with flyback diode and capacitors" />
+    <figcaption>
+      The Arduino sends a PWM signal to the MOSFET gate through a 220 Ω resistor; a 10 kΩ pull-down keeps it off by default.  
+      A flyback diode (1N5819) across the motor protects against voltage spikes, while 470 µF and 0.1 µF capacitors across the supply smooth power and filter noise.
+    </figcaption>
+  </figure>
+
+  <h3>3️⃣ Arduino + L293D + Two DC Motors</h3>
+  <p>
+    The L293D chip allows independent control of two DC motors using four logic inputs and two PWM enable pins.  
+    The schematic below shows the complete wiring setup.
+  </p>
+
+  <figure>
+    <img src="a5_l293d_schem.jpg" alt="Schematic showing Arduino connections to L293D motor driver with two DC motors" />
+    <figcaption>
+      Each motor is connected to a pair of L293D outputs. IN1–IN4 control direction and EN1/EN2 set speed via PWM.  
+      VSS receives 5 V logic power, VS receives 6–12 V motor power, and all grounds are shared.
+    </figcaption>
+  </figure>
+
+  <pre><code>
+    // --- Dual Motor Control with L293D ---
+
+    Motor A:
+      EN1 → D3, IN1 → D4, IN2 → D5
+    Motor B:
+      EN2 → D6, IN3 → D7, IN4 → D8
+    Speed = 200  // PWM value (0–255)
+    
+    // Setup
+    Set all EN and IN pins as OUTPUT
+    Set all pins LOW to start
+    
+    // Motion patterns
+    bothForward:
+      Motor A → forward  (IN1=HIGH, IN2=LOW)
+      Motor B → forward  (IN3=HIGH, IN4=LOW)
+    
+    bothBackward:
+      Motor A → backward (IN1=LOW, IN2=HIGH)
+      Motor B → backward (IN3=LOW, IN4=HIGH)
+    
+    oneForwardOneBackward:
+      Motor A → forward  (IN1=HIGH, IN2=LOW)
+      Motor B → backward (IN3=LOW, IN4=HIGH)
+    
+    swapDirections:
+      Motor A → backward (IN1=LOW, IN2=HIGH)
+      Motor B → forward  (IN3=HIGH, IN4=LOW)
+    
+    // Loop
+    Run each motion for 2 seconds, then stop motors
+  </code></pre>
+
+</section>
+<!-- AI TOOLS USAGE & REFLECTION SECTION -->
+<section id="ai">
+  <h2>AI Tools Usage & Reflection</h2>
+  <p>
+    I used ChatGPT to help structure and format this documentation, explain circuit behavior, and verify
+    component ratings such as current draw, MOSFET limits, and capacitor roles. It also assisted in simplifying
+    pseudocode, creating organized connection tables, and ensuring that my explanations matched the clarity and
+    layout of previous assignments. All final circuits and code were verified and tested on the Arduino bench
+    setup.
+  </p>
+</section>
   </body>
 </html>

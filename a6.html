@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+    <title>A6: Joystick ↔ Interactive p5.js Webpage (WebSerial)</title>
+
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body>
+    <!-- HEADER SECTION -->
+    <header>
+      <video width="600" controls autoplay loop muted>
+        <source src="a6_demo.mp4" type="video/mp4" />
+      </video>
+      <div>
+        <h1>A6: Arduino Joystick ↔ p5.js Interaction (WebSerial)</h1>
+        <p class="meta">
+          HCDE • Arduino Uno • 2-Axis Joystick (X/Y + Button) • LED Output • p5.js • WebSerial
+        </p>
+      </div>
+    </header>
+
+    <!-- OVERVIEW SECTION -->
+    <section id="intro">
+      <h2>Overview</h2>
+      <div class="header">
+        <img src="a6_circuit.jpg" alt="Joystick, Arduino, LED wired on breadboard" />
+        <p>
+          This assignment creates a <strong>two-way interaction</strong> between an Arduino and a
+          <strong>p5.js webpage</strong> using <strong>WebSerial</strong>.  
+          <br /><br />
+          The Arduino reads input from a <strong>2-axis joystick</strong> (X position, Y position, and
+          built-in button). These three values are streamed to the webpage, where a p5.js sketch uses
+          them to move a visual cursor on the canvas and change its color when the button is pressed.
+          <br /><br />
+          The webpage also sends commands <strong>back to the Arduino</strong>.  
+          Dragging the mouse horizontally changes LED brightness (PWM), and pressing the <strong>B</strong>
+          key enables LED blinking until reset.
+        </p>
+      </div>
+    </section>
+
+    <!-- ARDUINO CODE SECTION -->
+    <section id="firmware">
+      <h2>Firmware (Arduino Code)</h2>
+      <p>
+        The Arduino reads three inputs from the joystick and prints them in the format
+        <code>X,Y,Button</code> for p5.js to parse.  
+        It also receives simple commands from the webpage:
+        <code>L###</code> sets LED brightness, <code>B</code> enables blink mode, and <code>R</code> resets.
+      </p>
+
+      <pre><code>
+// ---------------------------
+// A6: Arduino Joystick + LED
+// ---------------------------
+
+// Pin Setup
+const int PIN_JX = A0;      // Joystick X
+const int PIN_JY = A1;      // Joystick Y
+const int PIN_BTN = 3;      // Joystick button (uses INPUT_PULLUP)
+const int PIN_LED = 9;      // LED output
+
+// LED Behavior
+int ledBrightnessCmd = 0;   // LED brightness (0-255)
+bool blinkMode = false;     // Blink flag
+unsigned long lastBlink = 0;
+const unsigned long BLINK_MS = 250;
+
+void setup() {
+  // Serial for Web Serial communication
+  Serial.begin(9600);
+
+  // Joystick button uses internal pull-up
+  pinMode(PIN_BTN, INPUT_PULLUP);
+
+  // LED 
+  pinMode(PIN_LED, OUTPUT);
+
+  // Ensure LED starts off
+  analogWrite(PIN_LED, 0);
+}
+
+void loop() {
+  // Read joystick inputs
+  int joyX = analogRead(PIN_JX);
+  int joyY = analogRead(PIN_JY);
+  int joyButton = digitalRead(PIN_BTN);
+
+  // Handle incoming commands from JavaScript
+  while (Serial.available() > 0) {
+    char c = (char)Serial.read();
+
+    if (c == 'L') {
+      ledBrightnessCmd = constrain(Serial.parseInt(), 0, 255);
+    }
+
+    if (c == 'R') {
+      blinkMode = false;
+      ledBrightnessCmd = 0;
+    }
+
+    if (c == 'B') {
+      blinkMode = !blinkMode;
+    }
+  }
+
+  // Blink mode override
+  if (blinkMode) {
+    unsigned long now = millis();
+    if (now - lastBlink >= BLINK_MS) {
+      lastBlink = now;
+      ledBrightnessCmd = (ledBrightnessCmd > 0) ? 0 : 255;
+    }
+  }
+
+  // Apply LED brightness
+  analogWrite(PIN_LED, ledBrightnessCmd);
+
+  // Send joystick data to JavaScript
+  Serial.print(joyX);
+  Serial.print(',');
+  Serial.print(joyY);
+  Serial.print(',');
+  Serial.print(joyButton == LOW ? 1 : 0);
+  Serial.print('\n');
+
+  delay(20);
+}
+      </code></pre>
+    </section>
+
+    <!-- P5.JS SECTION -->
+    <section id="p5">
+      <h2>Webpage Code (p5.js + WebSerial)</h2>
+      <p>
+        The webpage displays a circle whose position is controlled by joystick X/Y.  
+        Dragging the mouse sends LED brightness to the Arduino.  
+        Pressing <strong>B</strong> triggers blink mode, and <strong>R</strong> resets it.
+      </p>
+
+      <pre><code>
+// ---------------------------
+// A6: p5.js WebSerial Sketch
+// ---------------------------
+
+// SERIAL STATE
+let port;            // Serial port
+let reader;          // Reader for incoming serial data
+let decoder = new TextDecoder();
+let buffer = "";     // Holds incoming partial lines
+
+// ARDUINO INPUTS
+let joyX = 512;      // Joystick X (0–1023)
+let joyY = 512;      // Joystick Y (0–1023)
+let btn  = 0;        // Button state: 1 pressed, 0 not
+
+// ARDUINO OUTPUT (LED CONTROL)
+let ledValue = 0;    // PWM 0–255
+
+// CANVAS SETUP (a6.js)
+function setup() {
+  createCanvas(500, 400);
+  textSize(16);
+
+  // Connect Arduino
+  document.getElementById("connect").addEventListener("click", connectSerial);
+}
+
+
+// DRAW LOOP
+function draw() {
+
+  background(230);
+
+  // Display Arduino values
+  fill(0);
+  text(`X: ${joyX}  Y: ${joyY}  Button: ${btn}`, 10, 25);
+  text(`LED PWM: ${ledValue}`, 10, 50);
+
+  // Convert joystick to ball position
+  let x = map(joyX, 0, 1023, 0, width);
+  let y = map(joyY, 0, 1023, 80, height);
+
+  // Button pressed = red ball
+  fill(btn ? "red" : "dodgerblue");
+
+  // ball
+  circle(x, y, 40);
+
+  // Mouse drag controls LED brightness
+  if (mouseIsPressed) {
+    ledValue = round(map(mouseX, 0, width, 0, 255));
+    sendToArduino("L" + ledValue);
+  }
+}
+// KEYBOARD INPUT - ARDUINO COMMANDS
+function keyPressed() {
+
+  if (key === "b" || key === "B") sendToArduino("B"); // Blink LED
+  if (key === "r" || key === "R") {                   // Reset LED
+    sendToArduino("R");
+    ledValue = 0;
+  }
+}
+
+// CONNECT TO ARDUINO USING WEB SERIAL
+async function connectSerial() {
+
+  port = await navigator.serial.requestPort();
+  await port.open({ baudRate: 9600 });
+
+  reader = port.readable.getReader();
+
+  readLoop(); // Begin reading
+}
+
+// READ DATA FROM ARDUINO FOREVER
+async function readLoop() {
+  while (port.readable) {
+    const { value, done } = await reader.read();
+    if (done) {
+      reader.releaseLock();
+      break;
+    }
+
+    // Decode incoming bytes into text
+    const text = decoder.decode(value);
+    buffer += text;
+
+    // Split buffer into complete lines
+    let lines = buffer.split("\n");
+    buffer = lines.pop(); // save incomplete line
+
+    // Process each full line
+    for (let line of lines) {
+      let parts = line.trim().split(",");
+      if (parts.length === 3) {
+        joyX = int(parts[0]);
+        joyY = int(parts[1]);
+        btn  = int(parts[2]);
+      }
+    }
+  }
+}
+
+// SEND ANY MESSAGE TO ARDUINO
+async function sendToArduino(msg) {
+  if (!port || !port.writable) return;
+
+  let writer = port.writable.getWriter();
+  await writer.write(new TextEncoder().encode(msg + "\n"));
+  writer.releaseLock();
+}
+      </code></pre>
+    </section>
+
+    <!-- SCHEMATIC SECTION -->
+    <section id="schematic">
+      <h2>Schematic and Connections</h2>
+      <figure>
+        <img src="a6_schematic.jpg" alt="Schematic of joystick, LED, and Arduino wiring" />
+        <figcaption>
+          The joystick sends X/Y as two analog voltages (0–5 V → 0–1023), and a digital button using
+          <strong>INPUT_PULLUP</strong>.  
+          The LED connects to pin D9 through a 220 Ω resistor so it can be driven with PWM.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- CALCULATIONS SECTION -->
+    <section id="calculations">
+      <h2>Calculations & Analog Read Explanation</h2>
+      <p>
+        The joystick contains two <strong>potentiometers</strong> wired as voltage dividers.  
+        Each divider outputs a voltage between 0–5 V, which the Arduino reads using its 10-bit ADC:
+      </p>
+
+      <pre><code>
+ADC Range: 0–1023  (because 2^10 = 1024 levels)
+Voltage Step: 5 V / 1023 ≈ 0.00488 V per count
+
+Center of joystick ≈ 2.5 V → analogRead() ≈ 512
+Full left/up      ≈ 0 V   → analogRead() ≈ 0
+Full right/down   ≈ 5 V   → analogRead() ≈ 1023
+      </code></pre>
+
+      <p>
+        On the webpage, these values are mapped to canvas coordinates:
+      </p>
+      <pre><code>
+x = map(joyX, 0, 1023, 0, width)
+y = map(joyY, 0, 1023, 50, height)
+      </code></pre>
+
+      <p>
+        LED brightness uses PWM on pin D9.  
+        <code>analogWrite()</code> accepts values 0–255, so the webpage maps mouse X to:
+      </p>
+
+      <pre><code>
+PWM = (mouseX / canvasWidth) × 255
+      </code></pre>
+    </section>
+
+    <!-- AI REFLECTION -->
+    <section id="ai">
+      <h2>AI Tools Usage & Reflection</h2>
+      <p>
+        I used ChatGPT to help structure the A6 documentation, clean the two-way WebSerial logic,
+        and ensure my Arduino and p5.js code matched the assignment requirements.  
+        The tool helped debug serial parsing issues and improve my understanding of ADC ranges,
+        input mapping, and PWM behavior.  
+        All wiring, testing, and interaction design decisions were validated on my own hardware.
+      </p>
+    </section>
+
+  </body>
+</html>

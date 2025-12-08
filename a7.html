@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+    <title>Health Aid Proximity Webcam — ToF Sensor + BTT HUD Overlays</title>
+
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body>
+    <!-- HEADER SECTION -->
+    <header>
+      <!-- <video width="600" controls autoplay loop muted>
+        <source src="a7_demo.mp4" type="video/mp4" />
+      </video> -->
+      <div>
+        <h1>A7: Health Aid Proximity Webcam — QT Py SAMD21 + VL53L4CD + BetterTouchTool</h1>
+        <p class="meta">
+          HCDE • Adafruit QT Py SAMD21 • VL53L4CD Time-of-Flight Sensor • CircuitPython • BetterTouchTool • HUD Overlay System
+        </p>
+      </div>
+    </header>
+
+    <!-- OVERVIEW SECTION -->
+    <section id="intro">
+      <h2>Overview</h2>
+      <div class="header">
+        <img src="cam_pic.png" alt="QT Py and VL53L4CD wired together using STEMMA QT cable" />
+        <p>
+          This project implements a <strong>health-aid proximity webcam</strong> that monitors how
+          close a user is sitting to their laptop screen using a <strong>VL53L4CD time-of-flight
+          sensor</strong>. The system runs on an <strong>Adafruit QT Py SAMD21</strong> using
+          <strong>CircuitPython</strong>, streaming distance readings to macOS via USB.
+          <br /><br />
+          A background AppleScript in <strong>BetterTouchTool (BTT)</strong> interprets the
+          incoming serial data and triggers color-coded <strong>HUD overlays</strong>:
+          <br />
+          <ul>
+            <li><strong>SAFE</strong> (green overlay) — user is at a healthy viewing distance</li>
+            <li><strong>MID</strong> (yellow overlay) — user is approaching the screen</li>
+            <li><strong>CLOSE</strong> (red overlay) — user is too close</li>
+          </ul>
+          This system provides real-time, continuous visual feedback that encourages healthy posture
+          and safe screen distance habits.
+        </p>
+      </div>
+    </section>
+
+    <section id="firmware">
+        <h2>Firmware & Software Integration</h2>
+        <p>
+          The proximity detection system consists of three coordinated software components:
+          <strong>(1)</strong> CircuitPython firmware running on the QT Py SAMD21, 
+          <strong>(2)</strong> a Python serial bridge that listens for distance updates and fires BetterTouchTool named triggers, and
+          <strong>(3)</strong> a BetterTouchTool keyboard shortcut that toggles the Python bridge on/off.
+        </p>
+      
+        <!-- CIRCUITPYTHON FIRMWARE -->
+        <h3>1. CircuitPython Firmware (QT Py M0)</h3>
+        <p>
+          The QT Py reads distance values from the VL53L4CD ToF sensor and prints one of three textual
+          states (<code>SAFE</code>, <code>MID</code>, <code>CLOSE</code>) to the serial port. The BTT
+          Python bridge listens to these messages in real time.
+        </p>
+      
+        <pre><code>
+      # --- code.py (runs on QT Py SAMD21) ---
+      import time
+      import board
+      import adafruit_vl53l4cd
+      
+      # Initialize I2C bus and VL53L4CD sensor
+      i2c = board.I2C()
+      vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
+      vl53.start_ranging()
+      
+      while True:
+          if vl53.data_ready:
+              d = vl53.distance        # distance in millimeters
+              vl53.clear_interrupt()
+      
+              # Distance thresholds
+              if d < 30:
+                  print("CLOSE")
+              elif d < 50:
+                  print("MID")
+              else:
+                  print("SAFE")
+      
+          time.sleep(0.2)
+        </code></pre>
+      
+        <!-- PYTHON BRIDGE SECTION -->
+        <h3>2. Python Serial Bridge (Triggers BTT Named Triggers)</h3>
+        <p>
+          This script continuously reads the QT Py’s serial output. When the distance category changes,
+          it fires a corresponding BetterTouchTool <strong>Named Trigger</strong>.  
+          These triggers activate the color-coded HUD overlays.
+        </p>
+      
+        <pre><code>
+      # --- btt_bridge.py ---
+      import serial
+      import os
+      
+      # Open QT Py serial port
+      ser = serial.Serial('/dev/cu.usbmodem1101', 115200)
+      last_value = None
+      
+      # Helper function: fires a BTT named trigger using AppleScript
+      def fire_trigger(trigger_name):
+          os.system(
+              f"""osascript -e 'tell application "BetterTouchTool" to trigger_named "{trigger_name}"'"""
+          )
+      
+      while True:
+          line = ser.readline().decode().strip()
+      
+          if line in ["SAFE", "MID", "CLOSE"] and line != last_value:
+              trigger_map = {
+                  "SAFE": "distanceSafe",
+                  "MID": "distanceMid",
+                  "CLOSE": "distanceClose"
+              }
+      
+              fire_trigger(trigger_map[line])
+              print("Triggered:", trigger_map[line])
+              last_value = line
+        </code></pre>
+      
+        <!-- KEYBOARD SHORTCUT TOGGLE -->
+        <h3>3. BetterTouchTool Keyboard Shortcut (Start/Stop Python Bridge)</h3>
+        <p>
+          To give the system an easy on/off switch, a BTT keyboard shortcut 
+          (<strong>Command + Shift + F</strong>) runs this shell script.  
+          If the serial bridge is running, it stops it.  
+          If it is not running, it launches a fresh background instance.
+        </p>
+      
+        <pre><code>
+      # --- BTT Toggle Script (Shell Script / Task Action) ---
+      if pgrep -f btt_bridge.py > /dev/null; then
+          pkill -f btt_bridge.py
+      else
+          python3 ~/Desktop/btt_bridge.py &
+      fi
+        </code></pre>
+      
+        <p>
+          This prevents duplicate serial listeners, ensures reliability, and allows the user
+          to enable/disable proximity monitoring instantly from anywhere in macOS.
+        </p>
+      </section>      
+
+    <!-- SCHEMATIC SECTION -->
+    <section id="schematic">
+      <h2>Schematic and Connections</h2>
+      <figure>
+        <img src="a7_schem.jpg" alt="Schematic for QT Py M0 + VL53L4CD wiring" />
+        <figcaption>
+          The QT Py M0 and VL53L4CD are connected over I²C using a STEMMA QT cable.
+          <br /><br />
+          <strong>Connections:</strong>
+          <ul>
+            <li>QT Py 3V → VL53L4CD VIN</li>
+            <li>QT Py GND → VL53L4CD GND</li>
+            <li>QT Py SDA → VL53L4CD SDA</li>
+            <li>QT Py SCL → VL53L4CD SCL</li>
+          </ul>
+          The circuit is extremely compact — ideal for embedding into a webcam-style enclosure.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- CALCULATIONS SECTION -->
+    <section id="calculations">
+      <h2>Distance Threshold Calculations</h2>
+      <p>
+        Placeholder values were chosen based on common ergonomic guidelines:
+      </p>
+
+      <pre><code>
+        SAFE:  > 50mm   (Healthy viewing distance)
+        MID:   30 - 50mm
+        CLOSE: < 30 mm   (Too close, increased eye strain risk)
+      </code></pre>
+
+      <p>
+        The VL53L4CD has a precision of ±1 mm and ranges up to ~1200 mm indoors, making it suitable
+        for detecting real-time user movement. The polling frequency (20 Hz) is fast enough for smooth
+        overlay updates without noticeable lag.
+      </p>
+    </section>
+
+    <section id="enclosure">
+        <h2>3D-Printed Enclosure Design</h2>
+        <div class="header">
+          <p>
+            To house the QT Py M0 and VL53L4CD sensor, I designed a compact two-piece 
+            <strong>3D-printed shell</strong> tailored around the exact dimensions of the components.
+            Because this device is intended to sit directly on top of a laptop screen, the enclosure
+            needed to be <strong>as small, unobtrusive, and visually condensed as possible</strong> while
+            still protecting the electronics.
+            <br /><br />
+      
+            The top module holds the <strong>VL53L4CD time-of-flight sensor</strong> with a forward-facing
+            window to ensure clean infrared readings. The lower module houses the 
+            <strong>QT Py microcontroller</strong>, with an internal cable channel that routes the STEMMA QT
+            cable safely between boards.
+            <br /><br />
+      
+            The design is <strong>fully modular</strong>: both halves slide apart without screws, allowing
+            the user to remove or reinsert the electronics at any time. This is especially helpful for:
+            <ul>
+              <li><strong>Resetting or reflashing</strong> the microcontroller</li>
+              <li><strong>Inspecting or replacing</strong> the sensor</li>
+              <li>Experimenting with alternative layouts or upgrades</li>
+            </ul>
+      
+            The shell’s exterior geometry is intentionally minimalist, so it blends into the bezel of a
+            laptop without blocking the built-in webcam or distracting the user. The bottom surface aligns
+            naturally with the top edge of the display, making the device feel like a native accessory
+            rather than an attached tool.
+          </p>
+        </div>
+      </section>
+
+    <!-- REFLECTION SECTION -->
+    <section id="ref">
+      <h2>Reflection</h2>
+      <p>
+        I used the QT Py SAMD21 for the purposes of this project because it is significantly smaller and
+        allows the entire proximity-sensing system to fit into a compact, unobtrusive 3D-printed case.
+        It also has a built-in STEMMA QT connector that works directly with the VL53L4CD ToF sensor
+        using I²C, without needing jumper wires. Because the QT Py runs at 3.3V logic (matching the sensor) 
+        and supports the quick-iteration CircuitPython workflow, it was a more practical and efficient choice
+        for the polished, product-like final prototype that I was aiming to create.
+        Although my experience differs between programming firmware in Python vs. C++ (as we have done in this class),
+        the circumstances listed above led me to believe that it was a more fitting option for the product that I had 
+        aimed to create. From my experience, C++ is a powerful language for lower-level, embedded programming, 
+        perfect for the projects we had been working on up until this point. The differentiating factor for using python
+        was the fact that I could edit code and have immediate feedback from the harware without reflashing firmware,
+        allowing me to quickly and efficienctly debug.
+        Since this is a product which I would like to continue optimizing for personal (and hopefully commercial use in the future),
+        I wanted to create it in a way that would allow for rapid iteration and prototyping. Making edits to the code and seeing
+        immediate feedback leads me to believe that it is the optimal direction for where I want to take this project.
+      </p>
+    </section>
+
+  </body>
+</html>
+
